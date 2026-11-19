@@ -1,5 +1,0 @@
-CREATE TABLE IF NOT EXISTS game_state (
- id INTEGER PRIMARY KEY CHECK (id = 1),
- data_json TEXT NOT NULL,
- updated_at INTEGER NOT NULL
-);
