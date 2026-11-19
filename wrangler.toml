@@ -1,8 +1,0 @@
-name = "nora-api"
-main = "worker.js"
-compatibility_date = "2026-11-19"
-
-[[d1_databases]]
-binding = "DB"
-database_name = "nora-game-db"
-database_id = "0a723b96-5b1b-493e-a2b0-37443b376954"
