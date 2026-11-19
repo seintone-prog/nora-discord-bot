@@ -15,38 +15,34 @@ const defaults = {
   ],
   market: [], settings: {maintenance:false,event:"ပုံမှန် Event"}, logs: []
 };
-const response = (data, status=200) => new Response(JSON.stringify(data), {
-  status, headers:{...cors,"Content-Type":"application/json; charset=utf-8"}
+const response = (data,status=200) => new Response(JSON.stringify(data),{
+  status,headers:{...cors,"Content-Type":"application/json; charset=utf-8"}
 });
 export default {
- async fetch(request, env) {
-  if (request.method === "OPTIONS") return new Response(null,{headers:cors});
-  if (!env.DB || !env.API_SECRET) return response({error:"Worker configuration missing"},500);
-  if (request.headers.get("X-API-Key") !== env.API_SECRET) return response({error:"Unauthorized"},401);
-  const url = new URL(request.url);
-  if (url.pathname === "/health" && request.method === "GET") return response({ok:true,service:"Nora API",version:"2.0.0"});
-  if (url.pathname !== "/state") return response({error:"Not found"},404);
-  if (request.method === "GET") {
-   const row = await env.DB.prepare("SELECT data_json FROM game_state WHERE id=1").first();
-   if (!row) {
-    await env.DB.prepare("INSERT INTO game_state (id,data_json,updated_at) VALUES (1,?,?)").bind(JSON.stringify(defaults),Date.now()).run();
-    return response(defaults);
-   }
-   try { return response({...defaults,...JSON.parse(row.data_json)}); }
-   catch { return response({error:"Stored game data is corrupted"},500); }
+  async fetch(request,env) {
+    if(request.method==="OPTIONS") return new Response(null,{headers:cors});
+    if(!env.DB||!env.API_SECRET) return response({error:"Worker configuration missing"},500);
+    if(request.headers.get("X-API-Key")!==env.API_SECRET) return response({error:"Unauthorized"},401);
+    const url=new URL(request.url);
+    if(url.pathname==="/health"&&request.method==="GET") return response({ok:true,service:"Nora API",version:"2.1.0"});
+    if(url.pathname!=="/state") return response({error:"Not found"},404);
+    if(request.method==="GET"){
+      const row=await env.DB.prepare("SELECT data_json FROM game_state WHERE id=1").first();
+      if(!row){
+        await env.DB.prepare("INSERT INTO game_state (id,data_json,updated_at) VALUES (1,?,?)").bind(JSON.stringify(defaults),Date.now()).run();
+        return response(defaults);
+      }
+      try{return response({...defaults,...JSON.parse(row.data_json)});}
+      catch{return response({error:"Stored game data is corrupted"},500);}
+    }
+    if(request.method!=="PUT") return response({error:"Method not allowed"},405);
+    let body;
+    try{body=await request.json();}catch{return response({error:"Invalid JSON"},400);}
+    if(!body||typeof body!=="object"||Array.isArray(body)||!body.players||typeof body.players!=="object"||!Array.isArray(body.cards)||!Array.isArray(body.market))
+      return response({error:"Invalid state payload"},400);
+    const state={...defaults,...body};
+    await env.DB.prepare("INSERT INTO game_state (id,data_json,updated_at) VALUES (1,?,?) ON CONFLICT(id) DO UPDATE SET data_json=excluded.data_json,updated_at=excluded.updated_at")
+      .bind(JSON.stringify(state),Date.now()).run();
+    return response({ok:true,saved_at:Date.now()});
   }
-  if (request.method !== "PUT") return response({error:"Method not allowed"},405);
-  let body;
-  try { body = await request.json(); } catch { return response({error:"Invalid JSON"},400); }
-  if (!body || typeof body !== "object" || Array.isArray(body) ||
-      !body.players || typeof body.players !== "object" ||
-      !Array.isArray(body.cards) || !Array.isArray(body.market)) {
-    return response({error:"Invalid state payload"},400);
-  }
-  const state = {...defaults,...body};
-  await env.DB.prepare(
-   "INSERT INTO game_state (id,data_json,updated_at) VALUES (1,?,?) ON CONFLICT(id) DO UPDATE SET data_json=excluded.data_json,updated_at=excluded.updated_at"
-  ).bind(JSON.stringify(state),Date.now()).run();
-  return response({ok:true,saved_at:Date.now()});
- }
 };
