@@ -917,4 +917,90 @@ ${win ? "🪙 +200 Coins · +40 XP" : "🪙 +50 Coins · +15 XP"}`,
       );
     }
 
-    return message.reply
+    return message.reply(
+      "🌸 Command မသိပါ။ `n help` ကို ကြည့်ပါ။"
+    );
+
+  } catch (err) {
+    console.error("Command failed:", err);
+
+    return message.reply(
+      "⚠️ Nora API/Database မှာ ပြဿနာရှိနေပါတယ်။ Owner ကို အသိပေးပါ။"
+    ).catch(() => {});
+  }
+}
+
+// ================= DISCORD CLIENT =================
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ]
+});
+
+client.once("ready", () => {
+  botReady = true;
+
+  console.log("Nora online as " + client.user.tag);
+
+  client.user.setPresence({
+    activities: [
+      {
+        name: "Cute Anime Card Game 🌸",
+        type: 0
+      }
+    ],
+    status: "online"
+  });
+});
+
+client.on("messageCreate", runCommand);
+
+client.on("interactionCreate", async interaction => {
+  if (!interaction.isButton()) return;
+
+  try {
+    if (interaction.customId === "nora_cards") {
+      return interaction.reply({
+        content: "🃏 `nc` Card စာရင်း · `ns` Summon · `ni` Inventory · `n card ID` အသေးစိတ်",
+        ephemeral: true
+      });
+    }
+
+    if (interaction.customId === "nora_games") {
+      return interaction.reply({
+        content: "🎮 `nq` Quest · `nb` Battle · `nlb` Leaderboard",
+        ephemeral: true
+      });
+    }
+  } catch (err) {
+    console.error("Button error:", err);
+  }
+});
+
+client.on("error", err => {
+  console.error("Discord error:", err);
+});
+
+process.on("unhandledRejection", err => {
+  console.error("Unhandled rejection:", err);
+});
+
+process.on("uncaughtException", err => {
+  console.error("Uncaught exception:", err);
+});
+
+// ================= STARTUP =================
+
+(async () => {
+  try {
+    await load();
+    await client.login(TOKEN);
+  } catch (err) {
+    console.error("Nora startup failed:", err);
+    process.exit(1);
+  }
+})();
+
